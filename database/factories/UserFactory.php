@@ -56,4 +56,37 @@ class UserFactory extends Factory
             'two_factor_confirmed_at' => null,
         ]);
     }
+
+    /**
+     * Indicate that the user is a manager.
+     */
+    public function manager(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'role' => 'manager',
+            'is_active' => true,
+        ]);
+    }
+
+    /**
+     * Indicate that the user is a super manager.
+     */
+    public function superManager(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'role' => 'super_manager',
+            'is_active' => true,
+        ]);
+    }
+
+    /**
+     * Indicate that the user is an admin.
+     */
+    public function admin(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'role' => 'admin',
+            'is_active' => true,
+        ]);
+    }
 }

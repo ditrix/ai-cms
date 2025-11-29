@@ -12,18 +12,42 @@ import {
     SidebarMenuItem,
 } from '@/components/ui/sidebar';
 import { dashboard } from '@/routes';
+import { index as clientsIndex } from '@/routes/clients';
+import { index as managersIndex } from '@/routes/managers';
 import { type NavItem } from '@/types';
-import { Link } from '@inertiajs/vue3';
-import { BookOpen, Folder, LayoutGrid } from 'lucide-vue-next';
+import { Link, usePage } from '@inertiajs/vue3';
+import { BookOpen, Folder, LayoutGrid, Users, UserCog } from 'lucide-vue-next';
+import { computed } from 'vue';
 import AppLogo from './AppLogo.vue';
 
-const mainNavItems: NavItem[] = [
-    {
-        title: 'Dashboard',
-        href: dashboard(),
-        icon: LayoutGrid,
-    },
-];
+const page = usePage();
+const user = computed(() => page.props.auth.user as { role?: string });
+
+const mainNavItems = computed<NavItem[]>(() => {
+    const items: NavItem[] = [
+        {
+            title: 'Dashboard',
+            href: dashboard(),
+            icon: LayoutGrid,
+        },
+        {
+            title: 'Клиенты',
+            href: clientsIndex(),
+            icon: Users,
+        },
+    ];
+
+    // Супер-менеджер и админ видят пункт меню "Менеджеры"
+    if (user.value.role === 'super_manager' || user.value.role === 'admin') {
+        items.push({
+            title: 'Менеджеры',
+            href: managersIndex(),
+            icon: UserCog,
+        });
+    }
+
+    return items;
+});
 
 const footerNavItems: NavItem[] = [
     {
