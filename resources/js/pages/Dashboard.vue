@@ -14,6 +14,19 @@ const breadcrumbs: BreadcrumbItem[] = [
 
 const page = usePage();
 const user = page.props.auth.user;
+
+interface Statistics {
+    clients?: {
+        active: number;
+        total: number;
+    };
+    managers?: {
+        active: number;
+        total: number;
+    };
+}
+
+const statistics = page.props.statistics as Statistics | undefined;
 </script>
 
 <template>
@@ -31,6 +44,59 @@ const user = page.props.auth.user;
                 <p class="text-muted-foreground">
                     Manage your clients and team members from this dashboard.
                 </p>
+            </div>
+
+            <!-- Statistics Section -->
+            <div
+                v-if="statistics"
+                class="grid gap-4 md:grid-cols-2 lg:grid-cols-3"
+            >
+                <!-- Clients Statistics -->
+                <div
+                    class="rounded-lg border border-sidebar-border/70 bg-card p-6 dark:border-sidebar-border"
+                >
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-sm font-medium text-muted-foreground">
+                                Клиенты
+                            </p>
+                            <p class="mt-2 text-3xl font-bold">
+                                {{ statistics.clients?.active || 0 }}/{{
+                                    statistics.clients?.total || 0
+                                }}
+                            </p>
+                        </div>
+                        <div
+                            class="flex size-12 items-center justify-center rounded-lg bg-primary/10 text-primary"
+                        >
+                            <Users class="size-6" />
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Managers Statistics -->
+                <div
+                    v-if="statistics.managers"
+                    class="rounded-lg border border-sidebar-border/70 bg-card p-6 dark:border-sidebar-border"
+                >
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-sm font-medium text-muted-foreground">
+                                Менеджеры
+                            </p>
+                            <p class="mt-2 text-3xl font-bold">
+                                {{ statistics.managers.active }}/{{
+                                    statistics.managers.total
+                                }}
+                            </p>
+                        </div>
+                        <div
+                            class="flex size-12 items-center justify-center rounded-lg bg-primary/10 text-primary"
+                        >
+                            <UserCog class="size-6" />
+                        </div>
+                    </div>
+                </div>
             </div>
 
             <!-- Quick Actions -->
