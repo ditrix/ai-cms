@@ -54,6 +54,7 @@ const formData = computed(() => {
 const roles = [
     { value: 'manager', label: 'Manager' },
     { value: 'super_manager', label: 'Super Manager' },
+    { value: 'admin', label: 'Admin' },
 ];
 </script>
 
@@ -124,13 +125,14 @@ const roles = [
             <select
                 id="role"
                 name="role"
-                :default-value="formData.role"
+                :value="formData.role"
                 class="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-base shadow-xs transition-[color,box-shadow] outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] disabled:cursor-not-allowed disabled:opacity-50 md:text-sm"
             >
                 <option
                     v-for="roleOption in roles"
                     :key="roleOption.value"
                     :value="roleOption.value"
+                    :selected="roleOption.value === formData.role"
                 >
                     {{ roleOption.label }}
                 </option>

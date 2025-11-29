@@ -15,9 +15,22 @@ class DatabaseSeeder extends Seeder
     {
         // User::factory(10)->create();
 
-        User::factory()->create([
-            'name' => 'Test User',
-            'email' => 'test@example.com',
-        ]);
+        // Создание администратора через CreateAdminSeeder
+        $this->call(CreateAdminSeeder::class);
+
+        // Создание дополнительного администратора
+        $dmitrySeeder = new CreateAdminSeeder;
+        $dmitrySeeder->setParameters('Dmitry', 'dmitry@mail.com', 'password');
+        $dmitrySeeder->setCommand($this->command);
+        $dmitrySeeder->run();
+
+        // Создание тестового пользователя (если не существует)
+        User::firstOrCreate(
+            ['email' => 'test@example.com'],
+            [
+                'name' => 'Test User',
+                'password' => \Illuminate\Support\Facades\Hash::make('password'),
+            ]
+        );
     }
 }

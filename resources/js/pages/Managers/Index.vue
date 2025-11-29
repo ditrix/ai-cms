@@ -76,13 +76,22 @@ const columns = computed(() => [
 ]);
 
 const tableItems = computed(() => {
-    return props.managers.data.map((manager) => ({
-        id: manager.id,
-        name: manager.name,
-        email: manager.email,
-        role: manager.role === 'super_manager' ? 'Super Manager' : 'Manager',
-        is_active: manager.is_active ? 'Active' : 'Inactive',
-    }));
+    return props.managers.data.map((manager) => {
+        let roleLabel = 'Manager';
+        if (manager.role === 'super_manager') {
+            roleLabel = 'Super Manager';
+        } else if (manager.role === 'admin') {
+            roleLabel = 'Admin';
+        }
+
+        return {
+            id: manager.id,
+            name: manager.name,
+            email: manager.email,
+            role: roleLabel,
+            is_active: manager.is_active ? 'Active' : 'Inactive',
+        };
+    });
 });
 
 const handleSearch = (value: string) => {

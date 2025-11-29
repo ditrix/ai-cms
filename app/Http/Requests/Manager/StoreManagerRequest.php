@@ -27,7 +27,7 @@ class StoreManagerRequest extends FormRequest
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'email', 'unique:users,email'],
             'password' => ['required', 'string', 'min:8', 'confirmed'],
-            'role' => ['required', Rule::in(['manager', 'super_manager'])],
+            'role' => ['required', Rule::in(['manager', 'super_manager', 'admin'])],
             'is_active' => ['sometimes', 'boolean'],
         ];
     }
