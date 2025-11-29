@@ -1,0 +1,48 @@
+# Задача 4.1: Form Requests для Client
+
+## Ответственный агент
+**dev_agent_1**
+
+## Этап
+Этап 4: Backend API - Form Requests
+
+## Зависимости
+- Задача 2.2 (Модель Client) - должна быть завершена
+
+## Описание
+Создать Form Request классы для валидации операций создания и обновления клиентов.
+
+## Файлы для создания
+- `app/Http/Requests/Client/StoreClientRequest.php` (новый файл)
+- `app/Http/Requests/Client/UpdateClientRequest.php` (новый файл)
+
+## Требования
+
+### StoreClientRequest
+- Валидация полей:
+  - `name`: required, string, max:255
+  - `email`: required, email, unique:clients,email
+  - `manager_id`: required для супер-менеджера/админа, exists:users,id (где роль = manager)
+  - Для менеджера: manager_id автоматически устанавливается в текущего пользователя
+
+### UpdateClientRequest
+- Валидация полей:
+  - `name`: sometimes, string, max:255
+  - `email`: sometimes, email, unique:clients,email,ignore:$client->id
+  - `manager_id`: sometimes, exists:users,id (для супер-менеджера/админа)
+- Кастомные сообщения об ошибках на русском языке
+
+## Ссылки на документацию
+- См. `PLAN.mdc` - Задача 4.1
+- См. `ARC.mdc` - раздел 3.4 (Form Requests)
+- Использовать `search-docs` для Laravel Form Requests
+
+## Критерии приемки
+- [ ] Оба файла Form Request созданы
+- [ ] Правила валидации соответствуют требованиям
+- [ ] Кастомные сообщения об ошибках добавлены
+- [ ] Код соответствует стандартам Laravel
+- [ ] Задача задокументирована в `workflow.mdc`
+
+## Примечания
+Можно выполнять параллельно с задачей 4.2

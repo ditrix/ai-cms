@@ -1,0 +1,294 @@
+# План реализации CMS системы
+
+## Архитектура решения
+
+Система будет состоять из:
+- **Модели**: User (с ролями), Client
+- **Роли**: manager, super_manager, admin (через Enum)
+- **Авторизация**: Policies для Client и User
+- **Интерфейс**: Единообразные CRUD таблицы с поиском и сортировкой
+- **Навигация**: Динамическая боковая панель в зависимости от роли
+
+## Этапы реализации с возможностью параллелизации
+
+### Этап 1: Базовая структура данных (можно выполнять параллельно)
+
+#### Задача 1.1: Создание Enum для ролей
+- **Файл**: `app/Enums/UserRole.php`
+- **Зависимости**: нет
+- **Описание**: Enum с ролями: MANAGER, SUPER_MANAGER, ADMIN
+- **Можно выполнять параллельно с**: 1.2, 1.3
+
+#### Задача 1.2: Миграция для расширения таблицы users
+- **Файл**: `database/migrations/XXXX_add_role_to_users_table.php`
+- **Зависимости**: нет
+- **Описание**: Добавить колонки `role` (enum), `is_active` (boolean)
+- **Можно выполнять параллельно с**: 1.1, 1.3
+
+#### Задача 1.3: Миграция для создания таблицы clients
+- **Файл**: `database/migrations/XXXX_create_clients_table.php`
+- **Зависимости**: нет
+- **Описание**: Таблица clients с полями: id, name, email, manager_id (FK), timestamps
+- **Можно выполнять параллельно с**: 1.1, 1.2
+
+### Этап 2: Модели и отношения (зависит от Этапа 1)
+
+#### Задача 2.1: Расширение модели User
+- **Файл**: `app/Models/User.php`
+- **Зависимости**: 1.1, 1.2
+- **Описание**: 
+  - Добавить использование UserRole enum
+  - Добавить методы: `isManager()`, `isSuperManager()`, `isAdmin()`
+  - Добавить отношения: `clients()` (hasMany), `managedClients()` (hasMany через manager_id)
+- **Можно выполнять параллельно с**: 2.2
+
+#### Задача 2.2: Создание модели Client
+- **Файл**: `app/Models/Client.php`
+- **Зависимости**: 1.3
+- **Описание**:
+  - Fillable: name, email, manager_id
+  - Отношение: `manager()` (belongsTo User)
+  - Factory и Seeder
+- **Можно выполнять параллельно с**: 2.1
+
+### Этап 3: Авторизация и политики (зависит от Этапа 2)
+
+#### Задача 3.1: Policy для Client
+- **Файл**: `app/Policies/ClientPolicy.php`
+- **Зависимости**: 2.1, 2.2
+- **Описание**:
+  - `viewAny()`: менеджер видит только своих клиентов, супер-менеджер и админ - всех
+  - `view()`: менеджер только своих, остальные - всех
+  - `create()`, `update()`, `delete()`: аналогично
+- **Можно выполнять параллельно с**: 3.2
+
+#### Задача 3.2: Policy для User (менеджеры)
+- **Файл**: `app/Policies/UserPolicy.php`
+- **Зависимости**: 2.1
+- **Описание**:
+  - `viewAny()`: только супер-менеджер и админ
+  - `view()`, `create()`, `update()`, `delete()`: только супер-менеджер и админ
+  - `changePassword()`: супер-менеджер и админ
+  - `changeManager()`: только супер-менеджер и админ (для клиентов)
+- **Можно выполнять параллельно с**: 3.1
+
+#### Задача 3.3: Middleware для проверки ролей (опционально)
+- **Файл**: `app/Http/Middleware/EnsureUserRole.php`
+- **Зависимости**: 2.1
+- **Описание**: Middleware для проверки конкретной роли
+- **Можно выполнять параллельно с**: 3.1, 3.2
+
+### Этап 4: Backend API - Form Requests (можно выполнять параллельно)
+
+#### Задача 4.1: Form Requests для Client
+- **Файлы**: 
+  - `app/Http/Requests/Client/StoreClientRequest.php`
+  - `app/Http/Requests/Client/UpdateClientRequest.php`
+- **Зависимости**: 2.2
+- **Описание**: Валидация для создания и обновления клиентов
+- **Можно выполнять параллельно с**: 4.2
+
+#### Задача 4.2: Form Requests для User/Manager
+- **Файлы**:
+  - `app/Http/Requests/Manager/StoreManagerRequest.php`
+  - `app/Http/Requests/Manager/UpdateManagerRequest.php`
+  - `app/Http/Requests/Manager/ChangePasswordRequest.php`
+  - `app/Http/Requests/Manager/TransferClientsRequest.php`
+- **Зависимости**: 2.1
+- **Описание**: Валидация для операций с менеджерами
+- **Можно выполнять параллельно с**: 4.1
+
+### Этап 5: Backend API - Контроллеры (зависит от Этапов 3, 4)
+
+#### Задача 5.1: ClientController
+- **Файл**: `app/Http/Controllers/ClientController.php`
+- **Зависимости**: 3.1, 4.1, 2.2
+- **Описание**:
+  - `index()`: список с фильтрацией по роли (для менеджера - только его клиенты)
+  - `show()`: детали клиента
+  - `store()`, `update()`, `destroy()`: CRUD операции
+  - Поддержка поиска и сортировки
+- **Можно выполнять параллельно с**: 5.2
+
+#### Задача 5.2: ManagerController
+- **Файл**: `app/Http/Controllers/ManagerController.php`
+- **Зависимости**: 3.2, 4.2, 2.1
+- **Описание**:
+  - `index()`: список менеджеров (только для супер-менеджера и админа)
+  - `show()`: детали менеджера
+  - `store()`, `update()`, `destroy()`: CRUD операции
+  - `changePassword()`: смена пароля
+  - `transferClients()`: передача клиентов при удалении
+  - `toggleActive()`: переключение флага активности
+- **Можно выполнять параллельно с**: 5.1
+
+#### Задача 5.3: API Resources (опционально, для структурированного ответа)
+- **Файлы**:
+  - `app/Http/Resources/ClientResource.php`
+  - `app/Http/Resources/ManagerResource.php`
+- **Зависимости**: 2.1, 2.2
+- **Описание**: Ресурсы для форматирования ответов API
+- **Можно выполнять параллельно с**: 5.1, 5.2
+
+### Этап 6: Маршруты (зависит от Этапа 5)
+
+#### Задача 6.1: Регистрация маршрутов
+- **Файл**: `routes/web.php`
+- **Зависимости**: 5.1, 5.2
+- **Описание**: 
+  - `/dashboard/clients` - ресурсный маршрут для клиентов
+  - `/dashboard/managers` - ресурсный маршрут для менеджеров
+  - Дополнительные маршруты: change-password, transfer-clients, toggle-active
+
+### Этап 7: Frontend - Переиспользуемые компоненты (можно выполнять параллельно)
+
+#### Задача 7.1: Компонент DataTable (базовая таблица)
+- **Файл**: `resources/js/components/DataTable.vue`
+- **Зависимости**: нет
+- **Описание**: 
+  - Универсальный компонент таблицы с колонками: ID, Name, Email, Actions
+  - Поиск по имени и email
+  - Сортировка по колонкам
+  - Пагинация
+- **Можно выполнять параллельно с**: 7.2, 7.3
+
+#### Задача 7.2: Компонент ClientForm (форма клиента)
+- **Файл**: `resources/js/components/ClientForm.vue`
+- **Зависимости**: нет (но будет использоваться в 8.1)
+- **Описание**: Форма создания/редактирования клиента (name, email, manager_id для супер-менеджера)
+- **Можно выполнять параллельно с**: 7.1, 7.3
+
+#### Задача 7.3: Компонент ManagerForm (форма менеджера)
+- **Файл**: `resources/js/components/ManagerForm.vue`
+- **Зависимости**: нет (но будет использоваться в 8.2)
+- **Описание**: Форма создания/редактирования менеджера (name, email, password, is_active)
+- **Можно выполнять параллельно с**: 7.1, 7.2
+
+#### Задача 7.4: Компонент ChangeManagerModal (модальное окно смены менеджера)
+- **Файл**: `resources/js/components/ChangeManagerModal.vue`
+- **Зависимости**: нет
+- **Описание**: Модальное окно для смены менеджера у клиента (только для супер-менеджера)
+- **Можно выполнять параллельно с**: 7.1, 7.2, 7.3
+
+### Этап 8: Frontend - Страницы (зависит от Этапов 6, 7)
+
+#### Задача 8.1: Страница Clients/Index
+- **Файл**: `resources/js/pages/Clients/Index.vue`
+- **Зависимости**: 6.1, 7.1, 7.2, 7.4
+- **Описание**: 
+  - Использует DataTable для отображения клиентов
+  - Кнопки Create, Edit, Delete
+  - Для супер-менеджера - кнопка смены менеджера
+  - Фильтрация данных на основе роли пользователя
+- **Можно выполнять параллельно с**: 8.2, 8.3
+
+#### Задача 8.2: Страница Managers/Index
+- **Файл**: `resources/js/pages/Managers/Index.vue`
+- **Зависимости**: 6.1, 7.1, 7.3
+- **Описание**:
+  - Использует DataTable для отображения менеджеров
+  - Кнопки Create, Edit, Delete, Change Password, Toggle Active
+  - Только для супер-менеджера и админа
+- **Можно выполнять параллельно с**: 8.1, 8.3
+
+#### Задача 8.3: Обновление Dashboard
+- **Файл**: `resources/js/pages/Dashboard.vue`
+- **Зависимости**: нет
+- **Описание**: Информационный блок (как указано в требованиях)
+- **Можно выполнять параллельно с**: 8.1, 8.2
+
+### Этап 9: Навигация и боковая панель (зависит от Этапа 8)
+
+#### Задача 9.1: Обновление AppSidebar
+- **Файл**: `resources/js/components/AppSidebar.vue`
+- **Зависимости**: 8.1, 8.2, 8.3
+- **Описание**:
+  - Динамическое отображение пунктов меню в зависимости от роли
+  - Менеджер: Главная, Клиенты
+  - Супер-менеджер и Админ: Главная, Клиенты, Менеджеры
+  - Использование данных пользователя из Inertia page props
+
+### Этап 10: Wayfinder генерация (зависит от Этапа 6)
+
+#### Задача 10.1: Генерация Wayfinder типов
+- **Команда**: `php artisan wayfinder:generate`
+- **Зависимости**: 6.1
+- **Описание**: Генерация TypeScript типов для маршрутов
+
+### Этап 11: Тестирование (можно выполнять параллельно после соответствующих этапов)
+
+#### Задача 11.1: Тесты для ClientController
+- **Файл**: `tests/Feature/ClientControllerTest.php`
+- **Зависимости**: 5.1
+- **Описание**: Тесты CRUD операций с проверкой прав доступа для разных ролей
+- **Можно выполнять параллельно с**: 11.2
+
+#### Задача 11.2: Тесты для ManagerController
+- **Файл**: `tests/Feature/ManagerControllerTest.php`
+- **Зависимости**: 5.2
+- **Описание**: Тесты CRUD операций с проверкой прав доступа
+- **Можно выполнять параллельно с**: 11.1
+
+#### Задача 11.3: Тесты для Policies
+- **Файлы**: 
+  - `tests/Feature/ClientPolicyTest.php`
+  - `tests/Feature/UserPolicyTest.php`
+- **Зависимости**: 3.1, 3.2
+- **Описание**: Тесты проверки прав доступа через Policies
+
+## Стратегия параллелизации
+
+### Группа агентов 1 (Backend Foundation):
+- **Агент A**: Задачи 1.1, 2.1, 3.1, 4.1, 5.1
+- **Агент B**: Задачи 1.2, 1.3, 2.2, 3.2, 4.2, 5.2
+
+### Группа агентов 2 (Frontend Components):
+- **Агент C**: Задачи 7.1, 7.2, 8.1
+- **Агент D**: Задачи 7.3, 7.4, 8.2, 8.3
+
+### Группа агентов 3 (Integration & Testing):
+- **Агент E**: Задачи 6.1, 9.1, 10.1
+- **Агент F**: Задачи 11.1, 11.2, 11.3
+
+## Критические зависимости
+
+1. Этап 1 должен быть завершен перед Этапом 2
+2. Этап 2 должен быть завершен перед Этапом 3
+3. Этапы 3 и 4 должны быть завершены перед Этапом 5
+4. Этап 5 должен быть завершен перед Этапом 6
+5. Этапы 6 и 7 должны быть завершены перед Этапом 8
+6. Этап 8 должен быть завершен перед Этапом 9
+
+## Файлы для создания/изменения
+
+### Backend:
+- `app/Enums/UserRole.php` (новый)
+- `app/Models/Client.php` (новый)
+- `app/Models/User.php` (изменить)
+- `app/Policies/ClientPolicy.php` (новый)
+- `app/Policies/UserPolicy.php` (новый)
+- `app/Http/Controllers/ClientController.php` (новый)
+- `app/Http/Controllers/ManagerController.php` (новый)
+- `app/Http/Requests/Client/*.php` (новые)
+- `app/Http/Requests/Manager/*.php` (новые)
+- `database/migrations/*_add_role_to_users_table.php` (новый)
+- `database/migrations/*_create_clients_table.php` (новый)
+- `database/factories/ClientFactory.php` (новый)
+- `routes/web.php` (изменить)
+
+### Frontend:
+- `resources/js/components/DataTable.vue` (новый)
+- `resources/js/components/ClientForm.vue` (новый)
+- `resources/js/components/ManagerForm.vue` (новый)
+- `resources/js/components/ChangeManagerModal.vue` (новый)
+- `resources/js/components/AppSidebar.vue` (изменить)
+- `resources/js/pages/Clients/Index.vue` (новый)
+- `resources/js/pages/Managers/Index.vue` (новый)
+- `resources/js/pages/Dashboard.vue` (изменить)
+- `resources/js/types/index.d.ts` (изменить - добавить типы Client, Manager)
+
+### Tests:
+- `tests/Feature/ClientControllerTest.php` (новый)
+- `tests/Feature/ManagerControllerTest.php` (новый)
+- `tests/Feature/ClientPolicyTest.php` (новый)
+- `tests/Feature/UserPolicyTest.php` (новый)

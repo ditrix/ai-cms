@@ -1,0 +1,56 @@
+# Задача 6.1: Регистрация маршрутов
+
+## Ответственный агент
+**dev_ops_agent**
+
+## Этап
+Этап 6: Маршруты
+
+## Зависимости
+- Задача 5.1 (ClientController) - должна быть завершена
+- Задача 5.2 (ManagerController) - должна быть завершена
+
+## Описание
+Зарегистрировать маршруты для клиентов и менеджеров в файле routes/web.php.
+
+## Файлы для изменения
+- `routes/web.php` (изменить существующий файл)
+
+## Требования
+
+### Маршруты для клиентов:
+- `GET /dashboard/clients` - список клиентов (ClientController@index)
+- `POST /dashboard/clients` - создание клиента (ClientController@store)
+- `GET /dashboard/clients/{client}` - просмотр клиента (ClientController@show)
+- `PUT /dashboard/clients/{client}` - обновление клиента (ClientController@update)
+- `DELETE /dashboard/clients/{client}` - удаление клиента (ClientController@destroy)
+- `POST /dashboard/clients/{client}/change-manager` - смена менеджера (ClientController@changeManager)
+
+### Маршруты для менеджеров:
+- `GET /dashboard/managers` - список менеджеров (ManagerController@index)
+- `POST /dashboard/managers` - создание менеджера (ManagerController@store)
+- `GET /dashboard/managers/{manager}` - просмотр менеджера (ManagerController@show)
+- `PUT /dashboard/managers/{manager}` - обновление менеджера (ManagerController@update)
+- `DELETE /dashboard/managers/{manager}` - удаление менеджера (ManagerController@destroy)
+- `POST /dashboard/managers/{manager}/change-password` - смена пароля (ManagerController@changePassword)
+- `POST /dashboard/managers/{manager}/toggle-active` - переключение активности (ManagerController@toggleActive)
+
+### Middleware:
+- Все маршруты защищены `auth` и `verified` middleware
+
+## Ссылки на документацию
+- См. `PLAN.mdc` - Задача 6.1
+- См. `ARC.mdc` - раздел 3.2 (Маршруты)
+- Использовать `search-docs` для Laravel Routing
+
+## Критерии приемки
+- [ ] Файл `routes/web.php` обновлен
+- [ ] Все маршруты зарегистрированы
+- [ ] Используются ресурсные маршруты где возможно
+- [ ] Middleware применены корректно
+- [ ] Маршруты используют named routes для удобства
+- [ ] Код соответствует стандартам Laravel
+- [ ] Задача задокументирована в `workflow.mdc`
+
+## Примечания
+После завершения задачи можно запустить `php artisan wayfinder:generate` для генерации типов
