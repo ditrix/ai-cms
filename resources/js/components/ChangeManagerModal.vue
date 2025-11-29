@@ -11,7 +11,7 @@ import {
 } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Form } from '@inertiajs/vue3';
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 
 interface Manager {
     id: number;
@@ -54,6 +54,8 @@ const currentManager = computed(() => {
     return props.managers.find((m) => m.id === props.client.manager_id);
 });
 
+const selectedManagerId = ref<number | string>(props.client.manager_id || '');
+
 const handleSuccess = () => {
     emit('success');
     emit('close');
@@ -89,6 +91,7 @@ const handleSuccess = () => {
                     <select
                         id="manager_id"
                         name="manager_id"
+                        v-model="selectedManagerId"
                         required
                         class="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-base shadow-xs transition-[color,box-shadow] outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] disabled:cursor-not-allowed disabled:opacity-50 md:text-sm"
                     >
@@ -97,7 +100,6 @@ const handleSuccess = () => {
                             v-for="manager in managers"
                             :key="manager.id"
                             :value="manager.id"
-                            :selected="manager.id === client.manager_id"
                         >
                             {{ manager.name }} ({{ manager.email }})
                         </option>

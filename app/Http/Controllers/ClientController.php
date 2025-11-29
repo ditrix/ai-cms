@@ -55,7 +55,7 @@ class ClientController extends Controller
 
         // Получение списка менеджеров для супер-менеджера/админа
         $managers = null;
-        if (in_array($request->user()->role, [UserRole::SUPER_MANAGER->value, UserRole::ADMIN->value])) {
+        if (in_array($request->user()->role->value, [UserRole::SUPER_MANAGER->value, UserRole::ADMIN->value])) {
             $managers = \App\Models\User::where('role', UserRole::MANAGER->value)
                 ->where('is_active', true)
                 ->get(['id', 'name', 'email']);
@@ -134,7 +134,7 @@ class ClientController extends Controller
         Gate::authorize('update', $client);
 
         // Проверка роли (только супер-менеджер/админ)
-        if (! in_array($request->user()->role, [UserRole::SUPER_MANAGER, UserRole::ADMIN], true)) {
+        if (! in_array($request->user()->role->value, [UserRole::SUPER_MANAGER->value, UserRole::ADMIN->value])) {
             abort(403);
         }
 

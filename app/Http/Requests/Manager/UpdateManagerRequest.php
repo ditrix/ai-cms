@@ -32,7 +32,7 @@ class UpdateManagerRequest extends FormRequest
                 'email',
                 Rule::unique(User::class)->ignore($manager->id),
             ],
-            'role' => ['sometimes', Rule::in(['manager', 'super_manager'])],
+            'role' => ['sometimes', Rule::in(['manager', 'super_manager', 'admin'])],
             'is_active' => ['sometimes', 'boolean'],
         ];
     }
