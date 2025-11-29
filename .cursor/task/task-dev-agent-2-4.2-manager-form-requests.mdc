@@ -1,0 +1,60 @@
+# Задача 4.2: Form Requests для User/Manager
+
+## Ответственный агент
+**dev_agent_2**
+
+## Этап
+Этап 4: Backend API - Form Requests
+
+## Зависимости
+- Задача 2.1 (Расширение User) - должна быть завершена
+
+## Описание
+Создать Form Request классы для валидации операций с менеджерами.
+
+## Файлы для создания
+- `app/Http/Requests/Manager/StoreManagerRequest.php` (новый файл)
+- `app/Http/Requests/Manager/UpdateManagerRequest.php` (новый файл)
+- `app/Http/Requests/Manager/ChangePasswordRequest.php` (новый файл)
+- `app/Http/Requests/Manager/TransferClientsRequest.php` (новый файл)
+
+## Требования
+
+### StoreManagerRequest
+- Валидация полей:
+  - `name`: required, string, max:255
+  - `email`: required, email, unique:users,email
+  - `password`: required, string, min:8, confirmed
+  - `role`: required, in:manager,super_manager
+  - `is_active`: sometimes, boolean
+
+### UpdateManagerRequest
+- Валидация полей:
+  - `name`: sometimes, string, max:255
+  - `email`: sometimes, email, unique:users,email,ignore:$user->id
+  - `role`: sometimes, in:manager,super_manager
+  - `is_active`: sometimes, boolean
+
+### ChangePasswordRequest
+- Валидация полей:
+  - `password`: required, string, min:8, confirmed
+
+### TransferClientsRequest
+- Валидация полей:
+  - `new_manager_id`: required, exists:users,id (где роль = manager или super_manager)
+- Кастомные сообщения об ошибках на русском языке
+
+## Ссылки на документацию
+- См. `PLAN.mdc` - Задача 4.2
+- См. `ARC.mdc` - раздел 3.4 (Form Requests)
+- Использовать `search-docs` для Laravel Form Requests
+
+## Критерии приемки
+- [ ] Все четыре файла Form Request созданы
+- [ ] Правила валидации соответствуют требованиям
+- [ ] Кастомные сообщения об ошибках добавлены
+- [ ] Код соответствует стандартам Laravel
+- [ ] Задача задокументирована в `workflow.mdc`
+
+## Примечания
+Можно выполнять параллельно с задачей 4.1

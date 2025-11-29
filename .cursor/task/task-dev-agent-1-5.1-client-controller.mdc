@@ -1,0 +1,76 @@
+# Задача 5.1: ClientController
+
+## Ответственный агент
+**dev_agent_1**
+
+## Этап
+Этап 5: Backend API - Контроллеры
+
+## Зависимости
+- Задача 3.1 (ClientPolicy) - должна быть завершена
+- Задача 4.1 (Form Requests для Client) - должна быть завершена
+- Задача 2.2 (Модель Client) - должна быть завершена
+
+## Описание
+Создать контроллер для CRUD операций с клиентами с поддержкой поиска, сортировки и фильтрации по ролям.
+
+## Файлы для создания
+- `app/Http/Controllers/ClientController.php` (новый файл)
+
+## Требования
+
+### Методы контроллера:
+1. `index()`:
+   - Список клиентов с фильтрацией по роли
+   - Менеджер видит только своих клиентов (where manager_id = auth()->id())
+   - Супер-менеджер и админ видят всех клиентов
+   - Поддержка поиска по name и email
+   - Поддержка сортировки по ID, name, email
+   - Пагинация (если требуется)
+   - Использовать Policy::authorize('viewAny', Client::class)
+   - Возврат через Inertia::render('Clients/Index', ['clients' => $clients])
+
+2. `show(Client $client)`:
+   - Детали клиента
+   - Использовать Policy::authorize('view', $client)
+   - Возврат через Inertia::render('Clients/Show', ['client' => $client])
+
+3. `store(StoreClientRequest $request)`:
+   - Создание клиента
+   - Для менеджера: автоматически установить manager_id = auth()->id()
+   - Использовать Policy::authorize('create', Client::class)
+   - После создания: redirect()->route('clients.index')
+
+4. `update(UpdateClientRequest $request, Client $client)`:
+   - Обновление клиента
+   - Использовать Policy::authorize('update', $client)
+   - После обновления: redirect()->back()
+
+5. `destroy(Client $client)`:
+   - Удаление клиента
+   - Использовать Policy::authorize('delete', $client)
+   - После удаления: redirect()->route('clients.index')
+
+6. `changeManager(Request $request, Client $client)` (опционально, для супер-менеджера/админа):
+   - Смена менеджера у клиента
+   - Валидация: manager_id exists:users,id
+   - Использовать Policy::authorize('update', $client) + проверка роли
+
+## Ссылки на документацию
+- См. `PLAN.mdc` - Задача 5.1
+- См. `ARC.mdc` - раздел 3.3 (ClientController)
+- Использовать `search-docs` для Inertia.js и Laravel Controllers
+
+## Критерии приемки
+- [ ] Файл `app/Http/Controllers/ClientController.php` создан
+- [ ] Реализованы все CRUD методы
+- [ ] Используются Form Requests для валидации
+- [ ] Используются Policies для авторизации
+- [ ] Реализованы поиск и сортировка
+- [ ] Фильтрация по ролям работает корректно
+- [ ] Возврат данных через Inertia::render()
+- [ ] Код соответствует стандартам Laravel
+- [ ] Задача задокументирована в `workflow.mdc`
+
+## Примечания
+Можно выполнять параллельно с задачей 5.2

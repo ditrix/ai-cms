@@ -1,0 +1,465 @@
+# Архитектура системы AI CMS
+
+## 1. Общее описание архитектуры
+
+### 1.1. Архитектурный стиль
+Система построена на основе **Laravel Framework** с использованием **Inertia.js** для создания SPA-подобного интерфейса без необходимости отдельного API. Применяется паттерн **MVC** с дополнительными слоями для валидации (Form Requests) и авторизации (Policies).
+
+### 1.2. Технологический стек
+
+#### Backend:
+- **PHP**: 8.2.29
+- **Laravel Framework**: 12.40.2
+- **База данных**: SQLite (для разработки)
+- **Аутентификация**: Laravel Fortify v1.32.1
+- **ORM**: Eloquent
+
+#### Frontend:
+- **Inertia.js**: v2.0.11 (Laravel) + v2.2.7 (Vue3)
+- **Vue.js**: 3.5.22
+- **TypeScript**: через Wayfinder для типизации маршрутов
+- **Tailwind CSS**: v4.1.14
+- **Wayfinder**: v0.1.12 (генерация типизированных маршрутов)
+
+#### Инструменты разработки:
+- **Pest**: v3.8.4 (тестирование)
+- **Laravel Pint**: v1.26.0 (форматирование кода)
+- **Laravel Sail**: v1.48.1 (Docker окружение)
+
+## 2. Структура данных
+
+### 2.1. Модель данных
+
+#### Таблица `users`
+Расширенная модель пользователя с поддержкой ролей:
+- `id` (primary key)
+- `name` (string)
+- `email` (string, unique)
+- `password` (hashed)
+- `role` (enum: MANAGER, SUPER_MANAGER, ADMIN)
+- `is_active` (boolean) - флаг активности для менеджеров
+- `email_verified_at` (timestamp, nullable)
+- `two_factor_secret` (text, nullable)
+- `two_factor_recovery_codes` (text, nullable)
+- `two_factor_confirmed_at` (timestamp, nullable)
+- `remember_token` (string, nullable)
+- `created_at`, `updated_at` (timestamps)
+
+#### Таблица `clients`
+Модель клиента с привязкой к менеджеру:
+- `id` (primary key)
+- `name` (string)
+- `email` (string)
+- `manager_id` (foreign key -> users.id)
+- `created_at`, `updated_at` (timestamps)
+
+### 2.2. Отношения между моделями
+
+```
+User (Manager)
+  ├── hasMany: clients() - все клиенты, созданные менеджером
+  └── hasMany: managedClients() - клиенты, назначенные менеджеру
+
+Client
+  └── belongsTo: manager() -> User
+```
+
+### 2.3. Enum: UserRole
+
+```php
+enum UserRole: string
+{
+    case MANAGER = 'manager';
+    case SUPER_MANAGER = 'super_manager';
+    case ADMIN = 'admin';
+}
+```
+
+## 3. Слои приложения
+
+### 3.1. Слой представления (Presentation Layer)
+
+#### Frontend компоненты (Vue.js + Inertia.js)
+
+**Структура компонентов:**
+```
+resources/js/
+├── components/
+│   ├── DataTable.vue          # Универсальная таблица CRUD
+│   ├── ClientForm.vue         # Форма создания/редактирования клиента
+│   ├── ManagerForm.vue        # Форма создания/редактирования менеджера
+│   ├── ChangeManagerModal.vue # Модальное окно смены менеджера
+│   └── AppSidebar.vue         # Боковая панель навигации
+├── pages/
+│   ├── Dashboard.vue          # Главная страница
+│   ├── Clients/
+│   │   └── Index.vue          # Список клиентов
+│   └── Managers/
+│       └── Index.vue          # Список менеджеров
+└── types/
+    └── index.d.ts             # TypeScript типы
+```
+
+**Принципы:**
+- Компоненты переиспользуемые и независимые
+- DataTable - универсальный компонент для всех CRUD таблиц
+- Формы используют Inertia Form компонент
+- Навигация динамическая на основе роли пользователя
+
+### 3.2. Слой маршрутизации (Routing Layer)
+
+**Маршруты:**
+```php
+// Основные маршруты
+GET  /dashboard                    # Главная страница
+GET  /dashboard/clients           # Список клиентов
+POST /dashboard/clients           # Создание клиента
+GET  /dashboard/clients/{id}      # Просмотр клиента
+PUT  /dashboard/clients/{id}      # Обновление клиента
+DELETE /dashboard/clients/{id}    # Удаление клиента
+POST /dashboard/clients/{id}/change-manager # Смена менеджера
+
+GET  /dashboard/managers          # Список менеджеров (только супер-менеджер/админ)
+POST /dashboard/managers          # Создание менеджера
+GET  /dashboard/managers/{id}     # Просмотр менеджера
+PUT  /dashboard/managers/{id}     # Обновление менеджера
+DELETE /dashboard/managers/{id}   # Удаление менеджера
+POST /dashboard/managers/{id}/change-password # Смена пароля
+POST /dashboard/managers/{id}/toggle-active   # Переключение активности
+POST /dashboard/managers/{id}/transfer-clients # Передача клиентов при удалении
+```
+
+**Особенности:**
+- Все маршруты защищены middleware `auth` и `verified`
+- Используется Wayfinder для генерации типизированных маршрутов
+- Inertia.js обрабатывает все запросы как SPA
+
+### 3.3. Слой контроллеров (Controller Layer)
+
+**Контроллеры:**
+
+#### ClientController
+- `index()` - список клиентов с фильтрацией по роли
+- `show()` - детали клиента
+- `store()` - создание клиента
+- `update()` - обновление клиента
+- `destroy()` - удаление клиента
+- `changeManager()` - смена менеджера (только супер-менеджер/админ)
+
+#### ManagerController
+- `index()` - список менеджеров (только супер-менеджер/админ)
+- `show()` - детали менеджера
+- `store()` - создание менеджера
+- `update()` - обновление менеджера
+- `destroy()` - удаление менеджера с передачей клиентов
+- `changePassword()` - смена пароля
+- `toggleActive()` - переключение флага активности
+- `transferClients()` - передача клиентов другому менеджеру
+
+**Принципы:**
+- Контроллеры тонкие - логика в моделях и сервисах
+- Используют Form Requests для валидации
+- Используют Policies для авторизации
+- Возвращают данные через Inertia::render()
+
+### 3.4. Слой валидации (Validation Layer)
+
+**Form Requests:**
+
+#### Client:
+- `StoreClientRequest` - валидация создания клиента
+- `UpdateClientRequest` - валидация обновления клиента
+
+#### Manager:
+- `StoreManagerRequest` - валидация создания менеджера
+- `UpdateManagerRequest` - валидация обновления менеджера
+- `ChangePasswordRequest` - валидация смены пароля
+- `TransferClientsRequest` - валидация передачи клиентов
+
+**Принципы:**
+- Валидация вынесена в отдельные классы
+- Правила валидации и сообщения об ошибках в одном месте
+- Автоматическое применение через dependency injection
+
+### 3.5. Слой авторизации (Authorization Layer)
+
+**Policies:**
+
+#### ClientPolicy
+Методы авторизации для операций с клиентами:
+- `viewAny(User $user)` - может ли просматривать список
+- `view(User $user, Client $client)` - может ли просматривать конкретного клиента
+- `create(User $user)` - может ли создавать клиентов
+- `update(User $user, Client $client)` - может ли обновлять клиента
+- `delete(User $user, Client $client)` - может ли удалять клиента
+
+**Логика доступа:**
+- **Менеджер**: только свои клиенты (где manager_id = user.id)
+- **Супер-менеджер/Админ**: все клиенты
+
+#### UserPolicy
+Методы авторизации для операций с менеджерами:
+- `viewAny(User $user)` - может ли просматривать список менеджеров
+- `view(User $user, User $manager)` - может ли просматривать менеджера
+- `create(User $user)` - может ли создавать менеджеров
+- `update(User $user, User $manager)` - может ли обновлять менеджера
+- `delete(User $user, User $manager)` - может ли удалять менеджера
+- `changePassword(User $user, User $manager)` - может ли менять пароль
+- `changeManager(User $user)` - может ли менять менеджера у клиента
+
+**Логика доступа:**
+- **Менеджер**: нет доступа к операциям с менеджерами
+- **Супер-менеджер/Админ**: полный доступ ко всем операциям
+
+### 3.6. Слой моделей (Model Layer)
+
+**Модели:**
+
+#### User Model
+Расширенная модель пользователя:
+- Использует `UserRole` enum для роли
+- Методы проверки роли: `isManager()`, `isSuperManager()`, `isAdmin()`
+- Отношения: `clients()`, `managedClients()`
+- Casts: `role` -> UserRole enum, `is_active` -> boolean
+
+#### Client Model
+Модель клиента:
+- Fillable: `name`, `email`, `manager_id`
+- Отношение: `manager()` -> User
+- Factory для тестирования
+
+**Принципы:**
+- Бизнес-логика в моделях
+- Использование Eloquent relationships
+- Mass assignment protection через fillable
+
+## 4. Паттерны проектирования
+
+### 4.1. Используемые паттерны
+
+#### Repository Pattern (частично)
+- Eloquent ORM выступает в роли репозитория
+- Модели инкапсулируют работу с данными
+
+#### Policy Pattern
+- Авторизация через Laravel Policies
+- Разделение логики доступа по ролям
+
+#### Form Request Pattern
+- Валидация через отдельные классы Form Requests
+- Разделение ответственности валидации
+
+#### Component Pattern (Frontend)
+- Переиспользуемые Vue компоненты
+- Композиция компонентов для сложных интерфейсов
+
+### 4.2. Принципы SOLID
+
+- **Single Responsibility**: каждый класс имеет одну ответственность
+- **Open/Closed**: расширение через наследование и интерфейсы
+- **Liskov Substitution**: корректное использование наследования
+- **Interface Segregation**: разделение интерфейсов по назначению
+- **Dependency Inversion**: зависимость от абстракций через DI
+
+## 5. Безопасность
+
+### 5.1. Аутентификация
+- Laravel Fortify для управления аутентификацией
+- Поддержка двухфакторной аутентификации
+- Защита от CSRF через Laravel middleware
+- Хеширование паролей через bcrypt
+
+### 5.2. Авторизация
+- Role-based access control (RBAC) через Policies
+- Проверка прав на уровне контроллеров и представлений
+- Фильтрация данных на уровне запросов (scope)
+
+### 5.3. Валидация данных
+- Валидация на стороне сервера через Form Requests
+- Защита от SQL injection через Eloquent ORM
+- Защита от XSS через автоматическое экранирование в Blade/Vue
+
+## 6. Frontend архитектура
+
+### 6.1. Inertia.js архитектура
+
+**Принцип работы:**
+1. Laravel контроллер возвращает данные через `Inertia::render()`
+2. Inertia.js передает данные в Vue компонент как props
+3. Навигация происходит без полной перезагрузки страницы
+4. Состояние управляется на сервере
+
+**Преимущества:**
+- Нет необходимости в отдельном API
+- Единая точка входа для данных
+- Автоматическая синхронизация состояния
+
+### 6.2. Компонентная архитектура
+
+**Иерархия компонентов:**
+```
+AppLayout
+├── AppSidebar (динамическая навигация)
+└── AppContent
+    ├── Dashboard
+    ├── Clients/Index
+    │   ├── DataTable
+    │   ├── ClientForm (модальное окно)
+    │   └── ChangeManagerModal (для супер-менеджера)
+    └── Managers/Index
+        ├── DataTable
+        ├── ManagerForm (модальное окно)
+        └── ChangePasswordModal
+```
+
+### 6.3. Управление состоянием
+
+- **Серверное состояние**: через Inertia.js props
+- **Локальное состояние**: через Vue Composition API (ref, reactive)
+- **Формы**: через Inertia Form helper
+- **Кэширование**: на уровне браузера через Inertia
+
+### 6.4. Типизация
+
+- TypeScript типы для маршрутов через Wayfinder
+- Типы для данных через `resources/js/types/index.d.ts`
+- Типизация props компонентов через TypeScript
+
+## 7. Потоки данных
+
+### 7.1. Поток создания клиента
+
+```
+1. Пользователь заполняет форму (ClientForm.vue)
+2. Отправка POST запроса через Inertia Form
+3. Маршрут: POST /dashboard/clients
+4. Middleware: auth, verified
+5. ClientController::store()
+6. Валидация: StoreClientRequest
+7. Авторизация: ClientPolicy::create()
+8. Создание: Client::create()
+9. Возврат: Inertia::render() с обновленными данными
+10. Обновление UI без перезагрузки страницы
+```
+
+### 7.2. Поток просмотра списка клиентов
+
+```
+1. Запрос: GET /dashboard/clients
+2. Middleware: auth, verified
+3. ClientController::index()
+4. Авторизация: ClientPolicy::viewAny()
+5. Фильтрация данных по роли:
+   - Менеджер: Client::where('manager_id', $user->id)
+   - Супер-менеджер/Админ: Client::all()
+6. Поиск и сортировка (если указаны)
+7. Возврат: Inertia::render('Clients/Index', ['clients' => $clients])
+8. Рендеринг компонента Clients/Index.vue
+9. Отображение данных в DataTable
+```
+
+### 7.3. Поток смены менеджера у клиента
+
+```
+1. Супер-менеджер/Админ открывает ChangeManagerModal
+2. Выбор нового менеджера из списка
+3. Отправка POST запроса: /dashboard/clients/{id}/change-manager
+4. ClientController::changeManager()
+5. Валидация: проверка существования менеджера
+6. Авторизация: ClientPolicy::update() + проверка роли
+7. Обновление: Client::update(['manager_id' => $newManagerId])
+8. Возврат обновленных данных
+9. Обновление UI
+```
+
+## 8. Тестирование
+
+### 8.1. Стратегия тестирования
+
+**Уровни тестирования:**
+- **Feature Tests**: тестирование контроллеров и Policies
+- **Unit Tests**: тестирование моделей и бизнес-логики
+- **Browser Tests**: (опционально) тестирование UI через Laravel Dusk
+
+**Инструменты:**
+- Pest PHP для написания тестов
+- PHPUnit как движок тестирования
+- Factories для создания тестовых данных
+
+### 8.2. Покрытие тестами
+
+**Обязательное покрытие:**
+- Все CRUD операции контроллеров
+- Все методы Policies
+- Валидация Form Requests
+- Отношения моделей
+
+## 9. Масштабируемость и производительность
+
+### 9.1. Оптимизация запросов
+
+- **Eager Loading**: предотвращение N+1 проблем через `with()`
+- **Индексы**: индексы на `manager_id`, `email`
+- **Пагинация**: для больших списков данных
+
+### 9.2. Кэширование
+
+- **Конфигурация**: кэширование через `config:cache`
+- **Роуты**: кэширование через `route:cache`
+- **Представления**: кэширование через `view:cache`
+
+### 9.3. Расширяемость
+
+- Легкое добавление новых ролей через Enum
+- Расширение моделей через traits
+- Добавление новых разделов через единообразные компоненты
+
+## 10. Развертывание
+
+### 10.1. Требования окружения
+
+- PHP 8.2+
+- Composer
+- Node.js и npm (для сборки фронтенда)
+- SQLite/MySQL/PostgreSQL
+
+### 10.2. Процесс развертывания
+
+1. Установка зависимостей: `composer install`, `npm install`
+2. Настройка окружения: `.env` файл
+3. Миграции: `php artisan migrate`
+4. Сборка фронтенда: `npm run build`
+5. Оптимизация: `php artisan config:cache`, `php artisan route:cache`
+6. Генерация Wayfinder: `php artisan wayfinder:generate`
+
+## 11. Документация кода
+
+### 11.1. Стандарты документирования
+
+- PHPDoc для всех классов и методов
+- Комментарии для сложной бизнес-логики
+- README для инструкций по установке и использованию
+
+### 11.2. Типы и интерфейсы
+
+- TypeScript типы для фронтенда
+- PHPDoc типы для бэкенда
+- Описание параметров и возвращаемых значений
+
+## 12. Будущие улучшения
+
+### 12.1. Возможные расширения
+
+- API endpoints для мобильных приложений
+- Экспорт данных в Excel/CSV
+- Расширенная фильтрация и поиск
+- История изменений (audit log)
+- Уведомления и события
+- Расширенная статистика и аналитика
+
+### 12.2. Оптимизации
+
+- Переход на PostgreSQL для production
+- Redis для кэширования и сессий
+- Очереди для фоновых задач
+- CDN для статических ресурсов

@@ -1,0 +1,82 @@
+# Задача 5.2: ManagerController
+
+## Ответственный агент
+**dev_agent_2**
+
+## Этап
+Этап 5: Backend API - Контроллеры
+
+## Зависимости
+- Задача 3.2 (UserPolicy) - должна быть завершена
+- Задача 4.2 (Form Requests для Manager) - должна быть завершена
+- Задача 2.1 (Расширение User) - должна быть завершена
+
+## Описание
+Создать контроллер для CRUD операций с менеджерами с дополнительными методами для управления паролями и передачи клиентов.
+
+## Файлы для создания
+- `app/Http/Controllers/ManagerController.php` (новый файл)
+
+## Требования
+
+### Методы контроллера:
+1. `index()`:
+   - Список менеджеров (только для супер-менеджера и админа)
+   - Поддержка поиска по name и email
+   - Поддержка сортировки по ID, name, email, is_active
+   - Использовать Policy::authorize('viewAny', User::class)
+   - Возврат через Inertia::render('Managers/Index', ['managers' => $managers])
+
+2. `show(User $manager)`:
+   - Детали менеджера
+   - Использовать Policy::authorize('view', $manager)
+   - Возврат через Inertia::render('Managers/Show', ['manager' => $manager])
+
+3. `store(StoreManagerRequest $request)`:
+   - Создание менеджера
+   - Хеширование пароля через Hash::make()
+   - Использовать Policy::authorize('create', User::class)
+   - После создания: redirect()->route('managers.index')
+
+4. `update(UpdateManagerRequest $request, User $manager)`:
+   - Обновление менеджера
+   - Использовать Policy::authorize('update', $manager)
+   - После обновления: redirect()->back()
+
+5. `destroy(TransferClientsRequest $request, User $manager)`:
+   - Удаление менеджера с передачей клиентов
+   - Обязательная валидация нового менеджера через TransferClientsRequest
+   - Передача всех клиентов удаляемого менеджера новому менеджеру
+   - Использовать Policy::authorize('delete', $manager)
+   - После удаления: redirect()->route('managers.index')
+
+6. `changePassword(ChangePasswordRequest $request, User $manager)`:
+   - Смена пароля менеджера
+   - Хеширование нового пароля
+   - Использовать Policy::authorize('changePassword', $manager)
+   - После смены: redirect()->back()
+
+7. `toggleActive(User $manager)`:
+   - Переключение флага активности менеджера
+   - Использовать Policy::authorize('update', $manager)
+   - После переключения: redirect()->back()
+
+## Ссылки на документацию
+- См. `PLAN.mdc` - Задача 5.2
+- См. `ARC.mdc` - раздел 3.3 (ManagerController)
+- Использовать `search-docs` для Inertia.js и Laravel Controllers
+
+## Критерии приемки
+- [ ] Файл `app/Http/Controllers/ManagerController.php` создан
+- [ ] Реализованы все CRUD методы
+- [ ] Реализованы методы changePassword и toggleActive
+- [ ] Реализована логика передачи клиентов при удалении
+- [ ] Используются Form Requests для валидации
+- [ ] Используются Policies для авторизации
+- [ ] Реализованы поиск и сортировка
+- [ ] Возврат данных через Inertia::render()
+- [ ] Код соответствует стандартам Laravel
+- [ ] Задача задокументирована в `workflow.mdc`
+
+## Примечания
+Можно выполнять параллельно с задачей 5.1
