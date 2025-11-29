@@ -5,13 +5,19 @@ use App\Http\Controllers\ClientController;
 use App\Http\Controllers\ManagerController;
 use App\Models\Client;
 use App\Models\User;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 use Laravel\Fortify\Features;
 
-Route::get('/', function () {
+Route::get('/', function (Request $request) {
+    $clientsCount = Client::count();
+
     return Inertia::render('Welcome', [
         'canRegister' => Features::enabled(Features::registration()),
+        'canResetPassword' => Features::enabled(Features::resetPasswords()),
+        'clientsCount' => $clientsCount,
+        'status' => $request->session()->get('status'),
     ]);
 })->name('home');
 
